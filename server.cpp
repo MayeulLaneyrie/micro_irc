@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/05/26 17:14:39 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/06/02 17:52:48 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,46 @@
 #include <string>
 #include <vector>
 
+#include <stdio.h>
+#include <stdarg.h>
+
+#include <sys/epoll.h>
+
+int die(const char * fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+
+	int d;
+	char c;
+	char *s;
+	double f;
+
+	while (*fmt) {
+		switch (*fmt) {
+			case 'd':
+				d = va_arg(args, int);
+				std::cerr << d;
+				break ;
+			case 'c':
+				d = va_arg(args, int);
+				c = d;
+				std::cerr << c;
+				break ;
+			case 's':
+				s = va_arg(args, char *);
+				std::cerr << s;
+				break ;
+			case 'f':
+				f = va_arg(args, double);
+				std::cerr << f;
+		}
+		++fmt;
+	}
+	std::cerr << '\n' << std::flush;
+	exit(EXIT_FAILURE);
+	return (0);
+}
+
 int main(void) {
 	
 	struct sockaddr_in sa;
@@ -32,13 +72,17 @@ int main(void) {
 	sa.sin_port = htons(6667);
 	sa.sin_addr.s_addr = INADDR_ANY;
 
-	int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+	int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0); // TODO PROTECT
 
-	bind(sockfd, (struct sockaddr *) &sa, sizeof(sa));
+	bind(sockfd, (struct sockaddr *) &sa, sizeof(sa)); // TODO PROTECT
 
-	listen(sockfd, 4);
+	listen(sockfd, 4); // TODO PROTECT
 
-	vector<int> sockets;
+	std::vector<int> sockets;
+
+//	int epoll_fd = epoll_create(1);
+
+	die("sdscfc", "Machin bonjour, ", 42, ", et aussi ", '\'', 69.42, '\'');
 
 	int i = 0;
 	int new_socket;
