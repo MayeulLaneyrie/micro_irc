@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/06/02 17:52:48 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/06/14 21:30:26 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <string.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -64,6 +66,7 @@ int die(const char * fmt, ...) {
 
 int main(void) {
 	
+	int sockfd;	
 	struct sockaddr_in sa;
 	int addrlen = sizeof(sa);
 	char buffer[1024];
@@ -72,36 +75,35 @@ int main(void) {
 	sa.sin_port = htons(6667);
 	sa.sin_addr.s_addr = INADDR_ANY;
 
-	int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0); // TODO PROTECT
+	if ((sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
+		die("ss", "Critical failure when creating socket: ", strerror(errno));
 
-	bind(sockfd, (struct sockaddr *) &sa, sizeof(sa)); // TODO PROTECT
+	if (bind(sockfd, (struct sockaddr *) &sa, sizeof(sa)) < 0)
+		die("ss", "Critical failure at bind: ", strerror(errno));
 
-	listen(sockfd, 4); // TODO PROTECT
+	if (listen(sockfd, 4) < 0)
+		die("ss", "Critical failure at listen: ", strerror(errno));
 
-	std::vector<int> sockets;
-
+//	std::vector<int> sockets;
 //	int epoll_fd = epoll_create(1);
 
-	die("sdscfc", "Machin bonjour, ", 42, ", et aussi ", '\'', 69.42, '\'');
-
-	int i = 0;
 	int new_socket;
+
 	buffer[0] = '\0';
+
 	while (std::string(buffer) != "STOP\n") {
 
 		new_socket = -1;
 		while (new_socket < 0)
 			new_socket =
 				accept(sockfd, (struct sockaddr *) &sa, (socklen_t *) &addrlen);
-
-		if (!i)
-			std::cout << "* * * " << i << std::endl;
+		
 		buffer[0] = '\0';
-		while (std::string(buffer) != "NEXT\n" && std::string(buffer) != "STOP\n") 
-		{
+		
+		while (std::string(buffer) != "NEXT\n"
+				&& std::string(buffer) != "STOP\n") {
 
 			send(new_socket, "\n* ", 3, MSG_NOSIGNAL);
-			
 			int n = recv(new_socket, buffer, 1023, 0);
 			buffer[n] = '\0';
 
@@ -110,15 +112,9 @@ int main(void) {
 			std::cout << buffer << std::flush;
 		}
 		send(new_socket, "* * *\n", 6, 0);
-		std::cout << "* * *" << std::endl;
-
 		close(new_socket);
-	
-		++i;
 	}
-
 	close(sockfd);
-
 	return (0);
 }
 
