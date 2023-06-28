@@ -6,30 +6,29 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/06/27 21:27:23 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/06/28 17:59:39 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/epoll.h>
+#include <arpa/inet.h>
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdarg.h>
 
-#include <arpa/inet.h>
+#include <string.h>
 
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <map>
 #include <vector>
-
-#include <string.h>
-
-#include <stdio.h>
-#include <stdarg.h>
-
-#include <sys/epoll.h>
 
 #define MAXEV 10
 #define BUFFER_SIZE 1024
@@ -93,6 +92,48 @@ std::string username(int fd) {
 	return (ret);
 }
 
+int broadcast(std::map<int, std::string> const & clients, std::string const & msg, int except) {
+	std::map<int, std::string>::const_iterator it = clients.begin();
+	while (it != clients.end()) {
+		if (it->first == except) {
+			++it;
+			continue ;
+		}
+		send(it->first, msg.c_str(), msg.size(), 0);
+		++it;
+	}
+	return (0);
+}
+
+int command(std::map<int, std::string> & clients, int sender) {
+	size_t comstart = clients[sender].find(' ') + 1;
+	std::string rawcmd = clients[sender].substr(comstart, clients[sender].size() - comstart);
+
+	if (rawcmd == "/part\n") {
+		close(sender);
+		clients.erase(sender);
+		std::cout << "\e[1m[PART]\e[0m " << username(sender) << std::endl;
+		broadcast(clients,
+				std::string("\e[1m[SERVER]\e[0m ")
+					.append(username(sender))
+					.append("left.\n"), -1);
+	}
+	else if (rawcmd == "/stop\n") {
+		std::cout << "\e[1m[STOP]\e[0m " << clients[sender];
+		broadcast(clients,
+				std::string("\e[1m[SERVER]\e[0m ")
+					.append(username(sender))
+					.append("stopped the server.\n"), -1);
+		return (1);
+	}
+	else {
+		std::cout << "\e[1m[MSG]\e[0m " << clients[sender];
+		broadcast(clients, clients[sender], sender);
+		clients[sender] = username(sender);
+	}
+	return (0);
+}
+
 int main(void) {
 	
 	struct sockaddr_in sa;
@@ -116,13 +157,8 @@ int main(void) {
 
 // EPOLL SETUP -----------------------------------------------------------------
 
-	struct epoll_event
-		ev,
-		evts[MAXEV];
-	int
-		epollfd,
-		nfds,
-		new_socket;
+	struct epoll_event ev, evts[MAXEV];
+	int epollfd, nfds, curfd, stop = 0;
 
 	std::map<int, std::string> clients;
 
@@ -140,97 +176,63 @@ int main(void) {
 
 // MAIN LOOP START -------------------------------------------------------------
 
-	while (std::string(buffer) != "STOP\n") {
+	while (!stop) {
 
-// NEW SERVER LOOP -------------------------------------------------------------
-
+		std::cout << sockfd << std::endl;
+		cout << sockfd << endl;
 		if ((nfds = epoll_wait(epollfd, evts, MAXEV, -1)) < 0)
 			die("sds", __FILE__, __LINE__, strerror(errno));
 
 		// Traitement des évènements
 		for (int i = 0; i < nfds; ++i) {
 
-			int curfd = evts[i].data.fd;
+			curfd = evts[i].data.fd;
 
-			if (curfd == sockfd) { // Nouvelle connection
+			if (curfd == sockfd) { // Nouvelle connection ----------------------
 
-				if ((new_socket = 
+				if ((curfd = 
 							accept(sockfd, (struct sockaddr *) &sa,
 								(socklen_t *) &addrlen)) < 0)
 					die("sds", __FILE__, __LINE__, strerror(errno));
 
-				setsock_nonblock(new_socket);
+				setsock_nonblock(curfd);
 
 				ev.events = EPOLLIN;
-				ev.data.fd = new_socket;
+				ev.data.fd = curfd;
 
-				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_socket, &ev) < 0)
+				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, curfd, &ev) < 0)
 					die("sds", __FILE__, __LINE__, strerror(errno));
 
-				clients[new_socket] = username(new_socket);
+				clients[curfd] = username(curfd);
 
-				std::cout
-					<< "\e[1m[NEW CLIENT]\e[0m #" << new_socket << std::endl;
+				std::cout << "\e[1m[JOIN]\e[0m " << clients[curfd] << std::endl;
+				
+				broadcast(clients,
+					std::string("\e[1m[SERVER]\e[0m ")
+						.append(username(curfd)).append("joined.\n"), curfd);
 			}
-			else { // Cas général, msg
+			else { // Cas général, msg -----------------------------------------
 
 				int len = recv(curfd, buffer, BUFFER_SIZE - 1, 0);
 				if (!len) {
 					close(curfd);
 					clients.erase(curfd);
 					std::cout
-						<< "\e[1m[CLIENT PARTED]\e[0m " << curfd << std::endl;
+						<< "\e[1m[CLOSE]\e[0m " << username(curfd) << std::endl;
 				}
 				else {
 					buffer[len] = '\0';
 					clients[curfd].append(buffer);
 
-					if (buffer[len - 1] == '\n') {
-						std::cout << "\e[1m[MSG]\e[0m " << clients[curfd];
-						std::map<int, std::string>::iterator it = clients.begin();
-						while (it != clients.end()) {
-							if (it->first == curfd) {
-								++it;
-								continue ;
-							}
-							send(it->first, clients[curfd].c_str(), clients[curfd].size(), MSG_NOSIGNAL);
-							++it;
-						}
-						clients[curfd] = username(curfd);
-					}
+					if (buffer[len - 1] == '\n')
+						stop = command(clients, curfd);
 					else
-						std::cout << "\e[1;3m[PARTIAL MSG]\e[0m " << clients[curfd] << std::endl;
-
+						std::cout << "\e[1m...\e[0m " << buffer << std::endl;
 				}
 			}
 		}
-
-
-// OLD SERVER LOOP -------------------------------------------------------------
-/*
-		new_socket = -1;
-		while (new_socket < 0)
-			new_socket =
-				accept(sockfd, (struct sockaddr *) &sa, (socklen_t *) &addrlen);
-
-	
-		buffer[0] = '\0';
-		
-		while (std::string(buffer) != "NEXT\n"
-				&& std::string(buffer) != "STOP\n") {
-
-			send(new_socket, "\n* ", 3, MSG_NOSIGNAL);
-			int n = recv(new_socket, buffer, 1023, 0);
-			buffer[n] = '\0';
-
-			if (!n)
-				break ;
-			std::cout << buffer << std::flush;
-		}
-		send(new_socket, "* * *\n", 6, 0);
-		close(new_socket);
-*/
 	}
+
 	close(sockfd);
 	return (0);
 }
