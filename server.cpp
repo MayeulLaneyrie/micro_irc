@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/06/28 17:59:39 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/06/28 18:06:31 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,8 +178,6 @@ int main(void) {
 
 	while (!stop) {
 
-		std::cout << sockfd << std::endl;
-		cout << sockfd << endl;
 		if ((nfds = epoll_wait(epollfd, evts, MAXEV, -1)) < 0)
 			die("sds", __FILE__, __LINE__, strerror(errno));
 
