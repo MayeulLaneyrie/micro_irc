@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/07/10 15:00:46 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/07/10 15:07:43 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -325,6 +325,11 @@ int main(void) {
 		}
 	}
 
+	std::map<int, std::string>::const_iterator it;
+	for (it = clients.begin(); it != clients.end(); ++it)
+		close(it->first);
+	close(epollfd);
 	close(sockfd);
+
 	return (0);
 }
