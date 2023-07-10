@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/07/10 15:07:43 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/07/10 15:17:07 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,16 +125,11 @@ std::string username(int fd) {
  */
 
 void broadcast(std::map<int, std::string> const & clients, std::string const & msg, int except) {
-	std::map<int, std::string>::const_iterator it = clients.begin();
+	std::map<int, std::string>::const_iterator it;
 
-	while (it != clients.end()) {
-		if (it->first == except) {
-			++it;
-			continue ;
-		}
-		send(it->first, msg.c_str(), msg.size(), 0);
-		++it;
-	}
+	for (it = clients.begin; it != clients.end(); ++it)
+		if (it->first != except)
+			send(it->first, msg.c_str(), msg.size(), 0);
 }
 
 /* command() ===================================================================
@@ -196,7 +191,7 @@ int main(void) {
 	/*
 	 * Setting up 'sockfd', the listening socket, that will allow us to accept
 	 * new connections. Think of it as a big cable, which itself is holding up
-	 * smaller cables. We first create it, the bind it to the adress and port
+	 * smaller cables. We first create it, then bind it to the adress and port
 	 * contained in 'sa'. We then make it listen on that port. Any new connection
 	 * request on port 6667 will be received on sockfd.
 	 */
@@ -221,7 +216,7 @@ int main(void) {
 	 * So we will use epoll_wait, to block the program while there is nothing to
 	 * do. Once one or multiple events have been detected, they will be stored
 	 * in an array for us to manage.
- */
+ 	 */
 
 	int epollfd;
 
@@ -229,7 +224,7 @@ int main(void) {
 		die("sds", __FILE__, __LINE__, strerror(errno));
 
 	/*
-	 * Here, we subscribe 'sockfd' to be checked by epoll.
+	 * Here, we register 'sockfd' to be checked by epoll.
 	 */
 	struct epoll_event ev;
 
@@ -242,7 +237,7 @@ int main(void) {
 	 * Starting the main server loop. Each client will be identified only by his
 	 * fd. Each client will have his own input buffer, to manage partial
 	 * commands/msgs (e.g. when the message size is higher than BUFFER_SIZE).
-	 * All this is stored int the 'client' map, indexed by their fds.
+	 * All this is stored in the 'client' map, indexed by their fds.
 	 */
 
 	std::map<int, std::string> clients;
