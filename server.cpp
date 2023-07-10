@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/07/10 15:17:07 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/07/10 15:22:42 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -120,15 +120,14 @@ std::string username(int fd) {
 
 /* broadcast() =================================================================
  *
- * Send a message to all clients contained in 'clients', except 'except'
- * (which is supposed to be the sender).
+ * Send a message to all clients contained in 'clients', except 'sender'
  */
 
-void broadcast(std::map<int, std::string> const & clients, std::string const & msg, int except) {
+void broadcast(std::map<int, std::string> const & clients, std::string const & msg, int sender) {
 	std::map<int, std::string>::const_iterator it;
 
-	for (it = clients.begin; it != clients.end(); ++it)
-		if (it->first != except)
+	for (it = clients.begin(); it != clients.end(); ++it)
+		if (it->first != sender)
 			send(it->first, msg.c_str(), msg.size(), 0);
 }
 
