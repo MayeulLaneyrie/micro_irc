@@ -6,7 +6,7 @@
 /*   By: mlaneyri <mlaneyri@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/22 16:16:34 by mlaneyri          #+#    #+#             */
-/*   Updated: 2023/07/10 15:22:42 by mlaneyri         ###   ########.fr       */
+/*   Updated: 2023/07/10 16:53:39 by mlaneyri         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,15 +14,14 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <arpa/inet.h>
-
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdarg.h>
 
-#include <string.h>
+#include <cstdlib>
+#include <cerrno>
+#include <cstdio>
+#include <cstdarg>
+#include <cstring>
 
 #include <iostream>
 #include <string>
@@ -32,6 +31,9 @@
 
 #define MAXEV 16
 #define BUFFER_SIZE 1024
+
+#define _B_ "\e[1m" // Style = bold
+#define _R_ "\e[0m " // Style = reset (and then a space)
 
 /* die() =======================================================================
  *
@@ -114,7 +116,7 @@ std::string itos(int n) {
 std::string username(int fd) {
 	std::string ret("\e[1;");
 
-	ret.append(itos(91 + fd % 6)).append("m[").append(itos(fd)).append("]\e[0m ");
+	ret.append(itos(91 + fd % 6)).append("m[").append(itos(fd)).append("]"_R_);
 	return (ret);
 }
 
@@ -147,25 +149,25 @@ void broadcast(std::map<int, std::string> const & clients, std::string const & m
 
 int command(std::map<int, std::string> & clients, int sender) {
 	if (clients[sender] == "/part\n") {
-		send(sender, "\e[1m[SERVER]\e[0m You left.\n", 27, 0);
+		send(sender, _B_"[SERVER]"_R_"You left.\n", 27, 0);
 		close(sender);
 		clients.erase(sender);
-		std::cout << "\e[1m[PART]\e[0m " << username(sender) << std::endl;
+		std::cout << _B_"[PART]"_R_ << username(sender) << std::endl;
 		broadcast(clients,
-				std::string("\e[1m[SERVER]\e[0m ")
+				std::string(_B_"[SERVER]"_R_)
 					.append(username(sender))
 					.append("left.\n"), -1);
 	}
 	else if (clients[sender] == "/stop\n") {
-		std::cout << "\e[1m[STOP]\e[0m " << username(sender) << std::endl;
+		std::cout << _B_"[STOP]"_R_ << username(sender) << std::endl;
 		broadcast(clients,
-				std::string("\e[1m[SERVER]\e[0m ")
+				std::string(_B_"[SERVER]"_R_)
 					.append(username(sender))
 					.append("stopped the server.\n"), -1);
 		return (1);
 	}
 	else {
-		std::cout << "\e[1m[MSG]\e[0m " << username(sender) << clients[sender];
+		std::cout << _B_"[MSG]"_R_ << username(sender) << clients[sender];
 		broadcast(clients, clients[sender].insert(0, username(sender)), sender);
 		clients[sender] = "";
 	}
@@ -287,10 +289,10 @@ int main(void) {
 
 				clients[currentfd] = "";
 
-				std::cout << "\e[1m[JOIN]\e[0m " << username(currentfd) << std::endl;
+				std::cout << _B_"[JOIN]"_R_ << username(currentfd) << std::endl;
 				
 				broadcast(clients,
-					std::string("\e[1m[SERVER]\e[0m ")
+					std::string(_B_"[SERVER]"_R_)
 						.append(username(currentfd)).append("joined.\n"), currentfd);
 			}
 			/*
@@ -304,7 +306,7 @@ int main(void) {
 					close(currentfd);
 					clients.erase(currentfd);
 					std::cout
-						<< "\e[1m[CLOSE]\e[0m " << username(currentfd) << std::endl;
+						<< _B_"[CLOSE]"_R_ << username(currentfd) << std::endl;
 				}
 				else {
 					buffer[len] = '\0';
@@ -313,7 +315,7 @@ int main(void) {
 					if (buffer[len - 1] == '\n') // Complete cmd/msg, manage it.
 						stop = command(clients, currentfd);
 					else // Incomplete cmd/msg, we do nothing until it's complete.
-						std::cout << "\e[1m...\e[0m " << buffer << std::endl;
+						std::cout << _B_"..."_R_ << buffer << std::endl;
 				}
 			}
 		}
